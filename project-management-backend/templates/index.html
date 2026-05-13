@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow - Управление проектами</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-tertiary: #94a3b8;
+            --border: #e2e8f0;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --todo-color: #f59e0b;
+            --in-progress-color: #3b82f6;
+            --done-color: #10b981;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-tertiary: #64748b;
+            --border: #334155;
+            --accent: #818cf8;
+            --accent-hover: #6366f1;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        * { box-sizing: border-box; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+            transition: all 0.2s;
+        }
+
+        .textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+        }
+
+        .task-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            transition: all 0.2s;
+            cursor: grab;
+        }
+
+        .task-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .task-card.sortable-ghost {
+            opacity: 0.4;
+        }
+
+        .task-card.sortable-drag {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .status-badge:hover {
+            opacity: 0.8;
+        }
+
+        .status-todo {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--todo-color);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-in_progress {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--in-progress-color);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .status-done {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--done-color);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            z-index: 50;
+            display: none;
+        }
+
+        .status-dropdown.show {
+            display: block;
+        }
+
+        .status-option {
+            padding: 8px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s;
+        }
+
+        .status-option:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .subtask-container {
+            margin-left: 24px;
+            padding-left: 16px;
+            border-left: 2px solid var(--border);
+        }
+
+        .subtask-form {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .subtask-form.show {
+            display: block;
+        }
+
+        .msg {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .msg.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            display: block;
+        }
+
+        .msg.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            display: block;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 95%;
+        }
+
+        .header-gradient {
+            background: linear-gradient(135deg, var(--accent) 0%, #818cf8 100%);
+        }
+
+        .inline-edit {
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: inherit;
+            font-weight: inherit;
+            color: inherit;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .inline-edit:hover {
+            background: var(--bg-secondary);
+        }
+
+        .inline-edit:focus {
+            background: var(--bg-primary);
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        select {
+            appearance: none;
+            background: var(--bg-primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L2 4h8z'/%3E%3C/svg%3E") no-repeat right 10px center;
+            padding-right: 32px;
+            padding: 8px 32px 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .sortable-handle {
+            cursor: grab;
+        }
+
+        .sortable-handle:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-[var(--bg-primary)] border-b border-[var(--border)] sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/" class="flex items-center gap-3">
+                        <div class="w-10 h-10 header-gradient rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                        </div>
+                        <span class="text-xl font-bold">TaskFlow</span>
+                    </a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="theme-toggle" class="btn-ghost">
+                        <svg id="sun-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <svg id="moon-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
+                    </button>
+                    <div id="user-badge" class="hidden items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)] rounded-full border border-[var(--border)]">
+                        <span id="user-name" class="text-sm font-medium"></span>
+                        <button id="logout-btn" class="text-[var(--text-tertiary)] hover:text-[var(--danger)]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto max-w-6xl px-6 py-8">
+        <!-- Messages -->
+        <div id="msg" class="msg"></div>
+
+        <!-- Auth View -->
+        <div id="auth-view">
+            <div class="card p-8 max-w-md mx-auto mt-20">
+                <h2 class="text-xl font-semibold mb-6 text-center">Добро пожаловать</h2>
+                <div id="msg-auth" class="msg mb-4"></div>
+
+                <div class="flex gap-2 mb-6">
+                    <button id="tab-login" class="tab active flex-1 py-2 rounded-lg font-medium bg-[var(--accent)] text-white">Вход</button>
+                    <button id="tab-register" class="tab flex-1 py-2 rounded-lg font-medium">Регистрация</button>
+                </div>
+
+                <div id="login-form">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2 text-[var(--text-secondary)]">Имя пользователя</label>
+                        <input type="text" id="login-username" class="input" placeholder="Введите имя">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium mb-2 text-[var(--text-secondary)]">Пароль</label>
+                        <input type="password" id="login-password" class="input" placeholder="Введите пароль">
+                    </div>
+                    <button onclick="doLogin()" class="btn-primary w-full">Войти</button>
+                </div>
+
+                <div id="register-form" class="hidden">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2 text-[var(--text-secondary)]">Имя пользователя</label>
+                        <input type="text" id="reg-username" class="input" placeholder="Минимум 3 символа">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2 text-[var(--text-secondary)]">Email</label>
+                        <input type="email" id="reg-email" class="input" placeholder="example@mail.com">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium mb-2 text-[var(--text-secondary)]">Пароль</label>
+                        <input type="password" id="reg-password" class="input" placeholder="Минимум 6 символов">
+                    </div>
+                    <button onclick="doRegister()" class="btn-primary w-full">Зарегистрироваться</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Projects View -->
+        <div id="projects-view" class="hidden">
+            <!-- Create Project -->
+            <div class="card p-6 mb-8">
+                <h2 class="text-lg font-semibold mb-4">Создать новый проект</h2>
+                <div class="flex gap-4">
+                    <input type="text" id="new-project-name" class="input flex-1" placeholder="Название проекта">
+                    <input type="text" id="new-project-desc" class="input flex-1" placeholder="Краткое описание">
+                    <button onclick="createProject()" class="btn-primary">Создать</button>
+                </div>
+            </div>
+
+            <!-- Projects List -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-semibold">Мои проекты</h2>
+                <span id="projects-count" class="text-sm text-[var(--text-tertiary)]"></span>
+            </div>
+            <div id="projects-list" class="grid md:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- Project Detail View -->
+        <div id="project-detail-view" class="hidden">
+            <div class="mb-6">
+                <button onclick="backToProjects()" class="btn-ghost flex items-center gap-2 mb-4">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Все проекты
+                </button>
+
+                <div class="card p-6 mb-6 header-gradient text-white">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <input type="text" id="project-title" class="text-2xl font-bold bg-transparent border-transparent text-white placeholder-white/70 focus:bg-white/10 focus:border-white/30 rounded px-2 py-1 mb-2" placeholder="Название проекта">
+                            <input type="text" id="project-description" class="text-white/80 bg-transparent border-transparent focus:bg-white/10 rounded px-2 py-1 w-full max-w-lg" placeholder="Описание проекта">
+                        </div>
+                        <button onclick="saveProject()" class="btn-secondary bg-white/10 border-white/20 text-white hover:bg-white/20">Сохранить</button>
+                    </div>
+                </div>
+
+                <!-- Add Task -->
+                <div class="card p-4 mb-6">
+                    <div class="flex gap-4">
+                        <input type="text" id="new-task-title" class="input flex-1" placeholder="Новая задача...">
+                        <button onclick="createTask()" class="btn-primary">Добавить</button>
+                    </div>
+                </div>
+
+                <!-- Tasks -->
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Задачи</h3>
+                    <div class="flex gap-2">
+                        <button onclick="reloadTasks()" class="btn-ghost text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="tasks-list" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const sunIcon = document.getElementById('sun-icon');
+        const moonIcon = document.getElementById('moon-icon');
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            if (theme === 'dark') {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+        }
+
+        themeToggle.onclick = () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        };
+
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        setTheme(savedTheme);
+
+        // Tabs
+        document.getElementById('tab-login').onclick = () => {
+            document.getElementById('tab-login').classList.add('bg-[var(--accent)]', 'text-white');
+            document.getElementById('tab-register').classList.remove('bg-[var(--accent)]', 'text-white');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-form').classList.add('hidden');
+        };
+
+        document.getElementById('tab-register').onclick = () => {
+            document.getElementById('tab-register').classList.add('bg-[var(--accent)]', 'text-white');
+            document.getElementById('tab-login').classList.remove('bg-[var(--accent)]', 'text-white');
+            document.getElementById('register-form').classList.remove('hidden');
+            document.getElementById('login-form').classList.add('hidden');
+        };
+
+        document.getElementById('logout-btn').onclick = doLogout;
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.status-dropdown-wrapper')) {
+                document.querySelectorAll('.status-dropdown').forEach(d => d.classList.remove('show'));
+            }
+        });
+    </script>
+</body>
+</html>
