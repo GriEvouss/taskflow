@@ -54,6 +54,12 @@ class TaskRepository:
         return Task.query.filter_by(parent_id=parent_id).all()
 
     @staticmethod
+    def get_by_user_projects(user_id: int) -> list:
+        from app.models.project import Project
+        project_ids = [p.id for p in Project.query.filter_by(owner_id=user_id).all()]
+        return Task.query.filter(Task.project_id.in_(project_ids)).all() if project_ids else []
+
+    @staticmethod
     def get_by_assignee(assignee_id: int) -> list:
         """Получить все задачи исполнителя."""
         return Task.query.filter_by(assignee_id=assignee_id).all()
